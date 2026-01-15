@@ -85,19 +85,37 @@ def initialize_chatbot():
         docs = loader.load()
         print(f"Loaded {len(docs)} pages from PDF", flush=True)
 
-        # Document Splitting - Smaller chunks for better precision
+        # Document Splitting - LARGER chunks to reduce memory usage on Render free tier
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,
-            chunk_overlap=200,
+            chunk_size=2000,  # Larger chunks = fewer total chunks
+            chunk_overlap=100,  # Less overlap
             separators=["\n\n", "\n", ". ", " ", ""]
         )
         all_chunks = splitter.split_documents(docs)
         print(f"Created {len(all_chunks)} chunks", flush=True)
 
-        # Create embeddings and vector store
-        print("Creating embeddings (this may take a minute)...", flush=True)
-        embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        vectorstore = FAISS.from_documents(all_chunks, embedding)
+        # Create embeddings - use batches to reduce memory
+        print("Creating embeddings (optimized for low memory)...", flush=True)
+        
+        # Use smaller model and batch processing
+        embedding = HuggingFaceEmbeddings(
+            model_name="all-MiniLM-L6-v2",
+            model_kwargs={'device': 'cpu'},
+            encode_kwargs={'batch_size': 32, 'normalize_embeddings': True}
+        )
+        
+        # Create vector store in batches to save memory
+        batch_size = 50
+        vectorstore = None
+        for i in range(0, len(all_chunks), batch_size):
+            batch = all_chunks[i:i+batch_size]
+            print(f"Processing batch {i//batch_size + 1}/{(len(all_chunks)-1)//batch_size + 1}...", flush=True)
+            if vectorstore is None:
+                vectorstore = FAISS.from_documents(batch, embedding)
+            else:
+                batch_vectorstore = FAISS.from_documents(batch, embedding)
+                vectorstore.merge_from(batch_vectorstore)
+        
         print("Vector store created", flush=True)
 
         # Initialize Groq LLM
