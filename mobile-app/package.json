@@ -19,7 +19,8 @@
     "react-native": "0.81.5"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.0"
+    "@babel/core": "^7.25.0",
+    "canvas": "^3.2.1"
   },
   "private": true
 }

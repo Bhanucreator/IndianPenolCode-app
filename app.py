@@ -112,9 +112,19 @@ def index():
         "status": "online",
         "name": "IPC Chatbot API",
         "endpoints": {
-            "/ask": "POST - Send a query about IPC"
+            "/ask": "POST - Send a query about IPC",
+            "/health": "GET - Health check"
         }
     })
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "healthy", "chatbot": vectorstore is not None})
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    """Alias for /ask endpoint"""
+    return ask()
 
 @app.route("/ask", methods=["POST"])
 def ask():
