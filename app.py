@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import warnings
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -13,6 +14,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 warnings.filterwarnings("ignore")
+
+# Force unbuffered output for Render logs
+print("=== APP STARTING ===", flush=True)
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for mobile app requests
@@ -42,17 +46,22 @@ def initialize_chatbot():
         return
 
     try:
-        print("Starting chatbot initialization...")
+        print("Starting chatbot initialization...", flush=True)
+        sys.stdout.flush()
         
         # Check for GROQ API key
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            print("ERROR: GROQ_API_KEY environment variable not set!")
+            print("ERROR: GROQ_API_KEY environment variable not set!", flush=True)
             return
-        print("GROQ_API_KEY found")
+        print("GROQ_API_KEY found", flush=True)
         
         # Find PDF file
         pdf_path = "THE-INDIAN-PENAL-CODE-1860.pdf"
+        print(f"Looking for PDF at: {pdf_path}", flush=True)
+        print(f"Current directory: {os.getcwd()}", flush=True)
+        print(f"Files in directory: {os.listdir('.')}", flush=True)
+        
         if not os.path.exists(pdf_path):
             # Try alternative paths
             alt_paths = [
@@ -60,22 +69,21 @@ def initialize_chatbot():
                 "/app/THE-INDIAN-PENAL-CODE-1860.pdf",
             ]
             for alt in alt_paths:
+                print(f"Trying: {alt}", flush=True)
                 if os.path.exists(alt):
                     pdf_path = alt
                     break
         
         if not os.path.exists(pdf_path):
-            print(f"ERROR: PDF file not found at {pdf_path}")
-            print(f"Current directory: {os.getcwd()}")
-            print(f"Files in directory: {os.listdir('.')}")
+            print(f"ERROR: PDF file not found!", flush=True)
             return
         
-        print(f"Loading PDF from: {pdf_path}")
+        print(f"Loading PDF from: {pdf_path}", flush=True)
         
         # Load IPC PDF
         loader = PyPDFLoader(pdf_path)
         docs = loader.load()
-        print(f"Loaded {len(docs)} pages from PDF")
+        print(f"Loaded {len(docs)} pages from PDF", flush=True)
 
         # Document Splitting - Smaller chunks for better precision
         splitter = RecursiveCharacterTextSplitter(
@@ -84,13 +92,13 @@ def initialize_chatbot():
             separators=["\n\n", "\n", ". ", " ", ""]
         )
         all_chunks = splitter.split_documents(docs)
-        print(f"Created {len(all_chunks)} chunks")
+        print(f"Created {len(all_chunks)} chunks", flush=True)
 
         # Create embeddings and vector store
-        print("Creating embeddings (this may take a minute)...")
+        print("Creating embeddings (this may take a minute)...", flush=True)
         embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         vectorstore = FAISS.from_documents(all_chunks, embedding)
-        print("Vector store created")
+        print("Vector store created", flush=True)
 
         # Initialize Groq LLM
         llm = ChatGroq(
@@ -99,12 +107,13 @@ def initialize_chatbot():
             temperature=0.1
         )
         
-        print("Chatbot initialized successfully!")
+        print("Chatbot initialized successfully!", flush=True)
         
     except Exception as e:
-        print(f"ERROR during initialization: {str(e)}")
+        print(f"ERROR during initialization: {str(e)}", flush=True)
         import traceback
         traceback.print_exc()
+        sys.stdout.flush()
 
 def search_by_section_number(query):
     """Search for specific section numbers in the chunks"""
@@ -191,11 +200,13 @@ def ask():
         return jsonify({"answer": answer})
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
 
 # Initialize chatbot when module loads (for gunicorn)
+print("=== CALLING INITIALIZE_CHATBOT ===", flush=True)
 initialize_chatbot()
+print("=== INITIALIZATION COMPLETE ===", flush=True)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
