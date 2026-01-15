@@ -1,0 +1,35 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Byte-compiled files
+*.pyc
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+
+# Node modules
+node_modules/
+mobile-app/node_modules/
+mobile-app/.expo/
+
+# Jupyter
+.ipynb_checkpoints/
