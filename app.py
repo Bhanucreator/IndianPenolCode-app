@@ -41,32 +41,70 @@ def initialize_chatbot():
     if vectorstore is not None:
         return
 
-    # Load IPC PDF
-    loader = PyPDFLoader("THE-INDIAN-PENAL-CODE-1860.pdf")
-    docs = loader.load()
-    print(f"Loaded {len(docs)} pages from PDF")
+    try:
+        print("Starting chatbot initialization...")
+        
+        # Check for GROQ API key
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            print("ERROR: GROQ_API_KEY environment variable not set!")
+            return
+        print("GROQ_API_KEY found")
+        
+        # Find PDF file
+        pdf_path = "THE-INDIAN-PENAL-CODE-1860.pdf"
+        if not os.path.exists(pdf_path):
+            # Try alternative paths
+            alt_paths = [
+                os.path.join(os.path.dirname(__file__), "THE-INDIAN-PENAL-CODE-1860.pdf"),
+                "/app/THE-INDIAN-PENAL-CODE-1860.pdf",
+            ]
+            for alt in alt_paths:
+                if os.path.exists(alt):
+                    pdf_path = alt
+                    break
+        
+        if not os.path.exists(pdf_path):
+            print(f"ERROR: PDF file not found at {pdf_path}")
+            print(f"Current directory: {os.getcwd()}")
+            print(f"Files in directory: {os.listdir('.')}")
+            return
+        
+        print(f"Loading PDF from: {pdf_path}")
+        
+        # Load IPC PDF
+        loader = PyPDFLoader(pdf_path)
+        docs = loader.load()
+        print(f"Loaded {len(docs)} pages from PDF")
 
-    # Document Splitting - Smaller chunks for better precision
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=200,
-        separators=["\n\n", "\n", ". ", " ", ""]
-    )
-    all_chunks = splitter.split_documents(docs)
-    print(f"Created {len(all_chunks)} chunks")
+        # Document Splitting - Smaller chunks for better precision
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=800,
+            chunk_overlap=200,
+            separators=["\n\n", "\n", ". ", " ", ""]
+        )
+        all_chunks = splitter.split_documents(docs)
+        print(f"Created {len(all_chunks)} chunks")
 
-    # Create embeddings and vector store
-    embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    vectorstore = FAISS.from_documents(all_chunks, embedding)
+        # Create embeddings and vector store
+        print("Creating embeddings (this may take a minute)...")
+        embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        vectorstore = FAISS.from_documents(all_chunks, embedding)
+        print("Vector store created")
 
-    # Initialize Groq LLM
-    llm = ChatGroq(
-        groq_api_key=os.getenv("GROQ_API_KEY"),
-        model_name="llama-3.3-70b-versatile",
-        temperature=0.1
-    )
-    
-    print("Chatbot initialized successfully!")
+        # Initialize Groq LLM
+        llm = ChatGroq(
+            groq_api_key=api_key,
+            model_name="llama-3.3-70b-versatile",
+            temperature=0.1
+        )
+        
+        print("Chatbot initialized successfully!")
+        
+    except Exception as e:
+        print(f"ERROR during initialization: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 def search_by_section_number(query):
     """Search for specific section numbers in the chunks"""
